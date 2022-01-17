@@ -1,0 +1,23 @@
+{
+  "name": "primitive-theta-vaults",
+  "version": "1.0.0",
+  "description": "Theta vaults built on top of Primitive RMM-01",
+  "repository": "git@github.com-verum:verumlotus/PrimitiveThetaVaults.git",
+  "author": "verumlotus",
+  "license": "GPL 3.0",
+  "scripts": {
+    "prettier": "prettier --write 'src/**/*.sol'",
+    "prettier:list": "prettier --list-different 'src/**/*.sol'",
+    "prettier:check": "prettier --check 'src/**/*.sol'",
+    "solhint": "solhint --config ./.solhint.json 'src/**/*.sol' --fix",
+    "solhint:check": "solhint --config ./.solhint.json 'src/**/*.sol'",
+    "lint": "yarn run prettier && yarn run solhint",
+    "lint:check": "yarn run prettier:check && yarn run solhint:check"
+    
+  },
+  "devDependencies": {
+    "prettier": "^2.5.1",
+    "prettier-plugin-solidity": "^1.0.0-beta.19",
+    "solhint": "^3.3.6"
+  }
+}
