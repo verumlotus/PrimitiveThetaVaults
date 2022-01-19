@@ -6,7 +6,8 @@ import "../libraries/ShareMath.sol";
 import "openzeppelin/token/ERC20/IERC20.sol";
 
 /** 
- * Handles logic for interactions between the Vault and Primitive Engines
+ * Handles logic for interactions between the Vault and Primitive Engines.
+ * Follows the upgradeable proxy contract outlined by Openzeppelin and others
  */
 contract VaultPrimitiveInteractions is IPrimitiveCallback {
 
