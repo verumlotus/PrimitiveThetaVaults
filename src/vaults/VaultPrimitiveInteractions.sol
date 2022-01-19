@@ -11,14 +11,24 @@ import "openzeppelin/token/ERC20/IERC20.sol";
  */
 contract VaultPrimitiveInteractions is IPrimitiveCallback {
 
+    /************************************************
+     *  NON UPGRADEABLE STORAGE
+    ***********************************************/
+
+    /************************************************
+     *  IMMUTABLES & CONSTANTS
+    ***********************************************/
+
     /// @notice address of the asset (risky asset in context of RMM Pool)
-    address asset;
+    address immutable asset;
 
     /// @notice address of the stable asset
-    address stable;
+    address immutable stable;
 
     /// @notice address of the Primitive Engine for this asset/stable pair
-    address engine;
+    address immutable engine;
+
+    
 
     struct OpenPositionParams {
         // Address of the primitive engine for the asset/stable pair
@@ -43,12 +53,31 @@ contract VaultPrimitiveInteractions is IPrimitiveCallback {
 
     /************************************************
      *  Position Management
-     ***********************************************/
-    
+    ***********************************************/
+
+    /**
+     * @notice opens a new covered call position with the specified parameters
+     * @dev - note that we assume that a pool with this variables has not yet been configured (determined off-chain)
+     * @param params - struct containing config variables for RMM pool
+     */
+    function _openPosition(OpenPositionParams calldata params) internal {
+        IPrimitiveEngine engine = IPrimitiveEngine(params.engine);
+        (bytes32 poolId, uint256 delRisky, uint256 delStable) = engine.create(
+            params.strike,
+            params.sigma, 
+            params.maturity, 
+            params.gamma, 
+            params.riskyPerLp, 
+            params.delLiquidity, 
+            ""
+        );
+        // TODO: update necessary vault state and emit events? 
+
+    }
 
     /************************************************
      *  Primitive Callbacks
-     ***********************************************/
+    ***********************************************/
     
     /// @notice              Triggered when creating a new pool for an Engine
     /// @param  delRisky     Amount of risky tokens required to initialize risky reserve
