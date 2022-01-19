@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.11;
 
-import {Vault} from "./Vault.sol";
+import "./Vault.sol";
 
 library ShareMath {
 
