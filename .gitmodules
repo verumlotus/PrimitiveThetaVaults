@@ -4,3 +4,6 @@
 [submodule "lib/solmate"]
 	path = lib/solmate
 	url = https://github.com/Rari-Capital/solmate
+[submodule "lib/primitive"]
+	path = lib/primitive
+	url = https://github.com/primitivefinance/rmm-core
