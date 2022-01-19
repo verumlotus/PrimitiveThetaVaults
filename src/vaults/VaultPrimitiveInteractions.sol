@@ -28,8 +28,6 @@ contract VaultPrimitiveInteractions is IPrimitiveCallback {
     /// @notice address of the Primitive Engine for this asset/stable pair
     address immutable engine;
 
-    
-
     struct OpenPositionParams {
         // Address of the primitive engine for the asset/stable pair
         address engine;
@@ -49,6 +47,27 @@ contract VaultPrimitiveInteractions is IPrimitiveCallback {
         uint256 riskyPerLp;
         // Amount of liquidity to allocate to the curve, wei value with 18 decimals of precision
         uint256 delLiquidity;
+    }
+
+    /************************************************
+     *  Constructor & Initializer
+    ***********************************************/
+
+    /**
+     * @notice Initializes immutables & constants
+     * @dev - since we follow the upgradeable proxy pattern, this should on initiliaze constants & immutables (never state)
+     * @param _asset - address of asset
+     * @param _stable - address of stable
+     * @param _engine - address of Primitive Engine for specified asset/stable pair
+     */
+    constructor(
+        address _asset, 
+        address _stable, 
+        address _engine
+    ) {
+        asset = _asset;
+        stable = _stable;
+        engine = _engine;
     }
 
     /************************************************
