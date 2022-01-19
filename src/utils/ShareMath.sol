@@ -49,7 +49,7 @@ library ShareMath {
 
     // function pricePerShare
     /** 
-     * @notice Returns the number of assets per unit of share
+     * @notice Returns the number of assets per unit of share. If there are no shares issued, returns 1 (1 asset per 1 share)
      * @param totalSupply is the total supply of shares
      * @param totalBalance is the total balance of the asset held by this vault
      * @param pendingAmount is the pending amount of assets that haven't been converted into shares yet
