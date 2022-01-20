@@ -136,14 +136,81 @@ contract PrimitiveRmm01Vault is VaultPrimitiveInteractions, ERC20Upgradeable {
         feeRecipient = _feeRecipient;
         performanceFee = _performanceFee;
         managementFee = _managementFee * Vault.FEE_MULTIPLIER / WEEKS_PER_YEAR;
+        period = _period;
         vaultParams = _vaultParams;
 
-        uint256 assetBalance =
-            IERC20(vaultParams.asset).balanceOf(address(this));
+        uint256 assetBalance = IERC20(vaultParams.asset).balanceOf(address(this));
         ShareMath.assertUint104(assetBalance);
         vaultState.lastRoundAssetAmount = uint104(assetBalance);
 
         vaultState.round = 1;
     }
+
+    /************************************************
+     *  Setters
+    ***********************************************/
+
+    /**
+     * @notice - sets a new period between selling covered calls
+     * @param newPeriod - new period (in seconds)
+     */
+    function setPeriod(uint256 newPeriod) external onlyOwner {
+        period = newPeriod;
+    }
+
+    /**
+     * @notice Sets the new fee recipient
+     * @param newFeeRecipient is the address of the new fee recipient
+     */
+    function setFeeRecipient(address newFeeRecipient) external onlyOwner {
+        feeRecipient = newFeeRecipient;
+    }
+
+    /**
+     * @notice Sets the management fee for the vault
+     * @param newManagementFee is the management fee (6 decimals). ex: 2 * 10 ** 6 = 2%
+     */
+    function setManagementFee(uint256 newManagementFee) external onlyOwner {
+        require(
+            newManagementFee < 100 * Vault.FEE_MULTIPLIER,
+            "Invalid management fee"
+        );
+
+        // We are dividing annualized management fee by num weeks in a year
+        uint256 tmpManagementFee =
+            newManagementFee * Vault.FEE_MULTIPLIER / WEEKS_PER_YEAR;
+
+        emit ManagementFeeSet(managementFee, newManagementFee);
+
+        managementFee = tmpManagementFee;
+    }
+
+    /**
+     * @notice Sets the performance fee for the vault
+     * @param newPerformanceFee is the performance fee (6 decimals). ex: 20 * 10 ** 6 = 20%
+     */
+    function setPerformanceFee(uint256 newPerformanceFee) external onlyOwner {
+        require(
+            newPerformanceFee < 100 * Vault.FEE_MULTIPLIER,
+            "Invalid performance fee"
+        );
+
+        emit PerformanceFeeSet(performanceFee, newPerformanceFee);
+
+        performanceFee = newPerformanceFee;
+    }
+
+    /**
+     * @notice Sets a new cap for deposits
+     * @param newCap is the new cap for deposits
+     */
+    function setCap(uint256 newCap) external onlyOwner {
+        require(newCap > 0, "!newCap");
+        ShareMath.assertUint104(newCap);
+        emit CapSet(vaultParams.cap, newCap);
+        vaultParams.cap = uint104(newCap);
+    }
+
+    
 
 }
