@@ -92,6 +92,8 @@ contract VaultPrimitiveInteractions is IPrimitiveCallback {
      * @param params - struct containing config variables for RMM pool
      */
     function _openPosition(OpenPositionParams calldata params) internal {
+        // Ensure that we have closed out of the previous position
+        require(optionState.currentPoolId == bytes32(0), "Previous position not closed");
         (bytes32 poolId, ,) = IPrimitiveEngine(engine).create(
             params.strike,
             params.sigma, 
