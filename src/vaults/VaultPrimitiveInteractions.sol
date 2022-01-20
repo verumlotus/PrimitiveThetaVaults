@@ -5,15 +5,16 @@ import "../interfaces/IPrimitiveCallback.sol";
 import "../libraries/ShareMath.sol";
 import "openzeppelin/token/ERC20/IERC20.sol";
 import "../libraries/Vault.sol";
+import "openzeppelin-upgradeable/access/OwnableUpgradeable.sol";
 
 /** 
  * Handles logic for interactions between the Vault and Primitive Engines.
  * Follows the upgradeable proxy contract outlined by Openzeppelin and others
  */
-contract VaultPrimitiveInteractions is IPrimitiveCallback {
+contract VaultPrimitiveInteractions is IPrimitiveCallback, OwnableUpgradeable {
 
     /************************************************
-     *  NON UPGRADEABLE STORAGE
+     *  STORAGE
     ***********************************************/
 
     /// @notice holds state related to the current option the vault is in
@@ -52,7 +53,7 @@ contract VaultPrimitiveInteractions is IPrimitiveCallback {
     }
 
     /************************************************
-     *  Events
+     *  Events & Modifiers
     ***********************************************/
 
     /// @notice - emitted on pool creation
@@ -82,6 +83,16 @@ contract VaultPrimitiveInteractions is IPrimitiveCallback {
         engine = _engine;
     }
 
+    /**
+     * @notice - intializer for state variables the must be set 
+     */
+    function vaultPrimitiveInteractionsInitialize(
+        address _owner
+    ) internal initializer {
+        __Ownable_init();
+        transferOwnership(_owner);
+    }
+
     /************************************************
      *  Position Management
     ***********************************************/
@@ -91,7 +102,7 @@ contract VaultPrimitiveInteractions is IPrimitiveCallback {
      * @dev - note that we assume that a pool with this variables has not yet been configured (determined off-chain)
      * @param params - struct containing config variables for RMM pool
      */
-    function _openPosition(OpenPositionParams calldata params) internal {
+    function openPosition(OpenPositionParams calldata params) public onlyOwner {
         // Ensure that we have closed out of the previous position
         require(optionState.currentPoolId == bytes32(0), "Previous position not closed");
         (bytes32 poolId, ,) = IPrimitiveEngine(engine).create(
@@ -111,7 +122,7 @@ contract VaultPrimitiveInteractions is IPrimitiveCallback {
     /**
      * @notice closes the current covered call position by withdrawing all liquidity from RMM pool
      */
-    function _closePosition() internal {
+    function closePosition() public onlyOwner {
         // First we need to remove our liquidity and transfer it to our margin account within the engine
         (uint256 delRisky, uint256 delStable) = IPrimitiveEngine(engine).remove(optionState.currentPoolId, optionState.delLiquidity);
         // Withdraw asset & stable from margin account and transfer to ourselves
