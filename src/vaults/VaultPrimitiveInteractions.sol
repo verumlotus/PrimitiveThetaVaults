@@ -122,57 +122,6 @@ contract VaultPrimitiveInteractions is IPrimitiveCallback {
         optionState.delLiquidity = 0;
     }
 
-    /**
-     * Source: https://github.com/ribbon-finance/ribbon-v2/blob/master/contracts/libraries/VaultLifecycle.sol
-     * @notice Calculates the performance and management fee for this week's round
-     * @param currentBalance is the balance of funds held on the vault after closing our position
-     * @param assetBalanceBeforeRound is the amount of funds held by the vault before entering our position
-     * @param pendingDeposits is the pending deposit amount in assets
-     * @param performanceFeePercent is the performance fee pct in 6 decimal places; For example: 20 * 10**6 = 20% 
-     * @param managementFeePercent is the management fee pct. Also 6 decimal places
-     * @return performanceFeeInAsset is the performance fee
-     * @return managementFeeInAsset is the management fee
-     * @return vaultFee is the total fees
-     */
-    function _getVaultFees(
-        uint256 currentBalance, 
-        uint256 assetBalanceBeforeRound,
-        uint256 pendingDeposits,
-        uint256 performanceFeePercent,
-        uint256 managementFeePercent 
-    ) internal pure returns (
-        uint256 performanceFeeInAsset,
-        uint256 managementFeeInAsset,
-        uint256 vaultFee
-    ) {
-        uint256 lockedBalanceSansPending =
-            currentBalance > pendingDeposits
-                ? currentBalance - pendingDeposits
-                : 0;
-        
-        uint256 _performanceFeeInAsset;
-        uint256 _managementFeeInAsset;
-        uint256 _vaultFee;
-
-        // Take performance fee and management fee ONLY if difference between
-        // last week and this week's vault deposits, taking into account pending
-        // deposits and withdrawals, is positive. If it is negative, last week's
-        // option expired ITM past breakeven, and the vault took a loss so we
-        // do not collect performance fee for last week
-        if (lockedBalanceSansPending > assetBalanceBeforeRound) {
-            _performanceFeeInAsset = performanceFeePercent > 0
-                ? (lockedBalanceSansPending - assetBalanceBeforeRound) * performanceFeePercent / (100 * Vault.FEE_MULTIPLIER)
-                : 0;
-            _managementFeeInAsset = managementFeePercent > 0
-                ? lockedBalanceSansPending * managementFeePercent / (100 * Vault.FEE_MULTIPLIER)
-                : 0;
-
-            _vaultFee = _performanceFeeInAsset + _managementFeeInAsset;
-        }
-
-        return (_performanceFeeInAsset, _managementFeeInAsset, _vaultFee);
-    }
-
     /************************************************
      *  Primitive Callbacks
     ***********************************************/

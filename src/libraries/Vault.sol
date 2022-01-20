@@ -42,7 +42,7 @@ library Vault {
         uint256 lastRoundAssetAmount;
         // Stores the total tally of how much of `asset` there is in pending deposits
         // to be used to mint shares
-        uint128 totalPending;
+        uint128 totalDepositPending;
         // Amount of shares queued for scheduled withdrawals;
         uint128 queuedWithdrawShares;
     }
