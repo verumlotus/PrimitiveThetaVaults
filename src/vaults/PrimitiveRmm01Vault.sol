@@ -4,6 +4,7 @@ import "../libraries/Vault.sol";
 import "../libraries/VaultRollover.sol";
 import "./VaultPrimitiveInteractions.sol";
 import "openzeppelin-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import "../interfaces/IWETH.sol";
 
 contract PrimitiveRmm01Vault is VaultPrimitiveInteractions, ERC20Upgradeable {
     using ShareMath for Vault.DepositReceipt;
@@ -278,6 +279,22 @@ contract PrimitiveRmm01Vault is VaultPrimitiveInteractions, ERC20Upgradeable {
         ShareMath.assertUint104(newRoundAssetAmount);
         vaultState.currentRoundAssetAmount = uint104(newRoundAssetAmount);
         
+    }
+
+    /**
+     * @notice Helper function to make either an ETH transfer or ERC20 transfer
+     * @param recipient is the receiving address
+     * @param amount is the transfer amount
+     */
+    function transferAsset(address recipient, uint256 amount) internal {
+        address asset = vaultParams.asset;
+        if (asset == WETH) {
+            IWETH(WETH).withdraw(amount);
+            (bool success, ) = recipient.call{value: amount}("");
+            require(success, "Transfer failed");
+            return;
+        }
+        IERC20(asset).transfer(recipient, amount);
     }
 
     /************************************************
