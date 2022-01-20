@@ -12,7 +12,7 @@ library Vault {
     // Placeholder uint value to prevent cold writes
     uint256 internal constant PLACEHOLDER_UINT = 1;
 
-    struct VaultParams {
+    struct VaultDetails {
         // Token decimals for vault shares
         uint8 decimals;
         // Risky asset of RMM pool
@@ -26,10 +26,10 @@ library Vault {
     }
 
     struct OptionState {
-        // Option that the vault is currently shorting / longing
-        address currentOption;
-        // The timestamp when we can rollover to the next option
-        uint32 nextOptionReadyAt;
+        // Current poolId in which the vault has deployed assets
+        bytes32 currentPoolId;
+        // Amount of liquidity allocated to the curve, wei value with 18 decimals of precision
+        uint256 delLiquidity;
     }
 
     struct VaultState {

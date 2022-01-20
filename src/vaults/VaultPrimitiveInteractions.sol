@@ -4,6 +4,7 @@ import "primitive/interfaces/IPrimitiveEngine.sol";
 import "../interfaces/IPrimitiveCallback.sol";
 import "../libraries/ShareMath.sol";
 import "openzeppelin/token/ERC20/IERC20.sol";
+import "../libraries/Vault.sol";
 
 /** 
  * Handles logic for interactions between the Vault and Primitive Engines.
@@ -14,6 +15,9 @@ contract VaultPrimitiveInteractions is IPrimitiveCallback {
     /************************************************
      *  NON UPGRADEABLE STORAGE
     ***********************************************/
+
+    /// @notice holds state related to the current option the vault is in
+    Vault.OptionState optionState;
 
     /************************************************
      *  IMMUTABLES & CONSTANTS
@@ -29,8 +33,6 @@ contract VaultPrimitiveInteractions is IPrimitiveCallback {
     address immutable engine;
 
     struct OpenPositionParams {
-        // Address of the primitive engine for the asset/stable pair
-        address engine;
         // asset amount to deposit as LP in RMM Pool
         uint256 assetAmt;
         // stable amount to deposit as LP in RMM Pool
@@ -48,6 +50,10 @@ contract VaultPrimitiveInteractions is IPrimitiveCallback {
         // Amount of liquidity to allocate to the curve, wei value with 18 decimals of precision
         uint256 delLiquidity;
     }
+
+    /************************************************
+     *  Events
+    ***********************************************/
 
     /************************************************
      *  Constructor & Initializer
@@ -80,8 +86,7 @@ contract VaultPrimitiveInteractions is IPrimitiveCallback {
      * @param params - struct containing config variables for RMM pool
      */
     function _openPosition(OpenPositionParams calldata params) internal {
-        IPrimitiveEngine engine = IPrimitiveEngine(params.engine);
-        (bytes32 poolId, uint256 delRisky, uint256 delStable) = engine.create(
+        (bytes32 poolId, ,) = IPrimitiveEngine(engine).create(
             params.strike,
             params.sigma, 
             params.maturity, 
@@ -90,8 +95,22 @@ contract VaultPrimitiveInteractions is IPrimitiveCallback {
             params.delLiquidity, 
             ""
         );
-        // TODO: update necessary vault state and emit events? 
+        optionState.currentPoolId = poolId;
+        optionState.delLiquidity = params.delLiquidity;
+    }
 
+    /**
+     * @notice closes the current covered call position by withdrawing all liquidity from RMM pool
+     */
+    function _closePosition() internal {
+        // First we need to remove our liquidity and transfer it to our margin account within the engine
+        (uint256 delRisky, uint256 delStable) = IPrimitiveEngine(engine).remove(optionState.currentPoolId, optionState.delLiquidity);
+        // Withdraw asset & stable from margin account and transfer to ourselves
+        IPrimitiveEngine(engine).withdraw(address(this), delRisky, delStable);
+
+        // Reset option State since we are no longer an LP in the RMM pool
+        optionState.currentPoolId = bytes32(0);
+        optionState.delLiquidity = 0;
     }
 
     /************************************************
