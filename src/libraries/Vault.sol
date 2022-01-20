@@ -35,8 +35,8 @@ library Vault {
     struct VaultState {
         //  Current round number. `round` represents the number of `period`s elapsed.
         uint16 round;
-        // Amount of total liquidity we have in our RMM Pool
-        uint256 delLiquidityAmount;
+        // Amount of asset we have to put towards the current round
+        uint256 currentRoundAssetAmount;
         // Amount in asset that was present at the end of the previous round
         // used to calculate vault fees
         uint256 lastRoundAssetAmount;

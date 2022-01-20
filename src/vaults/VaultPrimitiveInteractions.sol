@@ -22,6 +22,9 @@ contract VaultPrimitiveInteractions is IPrimitiveCallback, OwnableUpgradeable, R
     /// @notice holds state related to the current option the vault is in
     Vault.OptionState optionState;
 
+    /// @notice Path for swaps
+    bytes public swapPath;
+
     // NOTE: Once deployed, no new state variables can be added to this contract, or we will encouter a storage collision
 
     /************************************************
@@ -105,6 +108,8 @@ contract VaultPrimitiveInteractions is IPrimitiveCallback, OwnableUpgradeable, R
     /**
      * @notice opens a new covered call position with the specified parameters
      * @dev - note that we assume that a pool with this variables has not yet been configured (determined off-chain)
+     * @dev - note that we also assume that the owner has rebalanced the vault holdings to an appropriate amount of 
+     * asset (risky) and stable (riskless) to maximize the liquidity received from the RMM pool
      * @param params - struct containing config variables for RMM pool
      */
     function openPosition(OpenPositionParams calldata params) public onlyOwner {

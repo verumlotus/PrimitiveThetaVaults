@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 import "../libraries/ShareMath.sol";
 import "../libraries/Vault.sol";
+import "../libraries/VaultRollover.sol";
 import "./VaultPrimitiveInteractions.sol";
 import "openzeppelin-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 
@@ -39,6 +40,9 @@ contract PrimitiveRmm01Vault is VaultPrimitiveInteractions, ERC20Upgradeable {
 
     /// @notice Length of maturity for call options
     uint256 public period;
+
+    /// @notice Amount locked for scheduled withdrawals last week;
+    uint256 public lastQueuedWithdrawAssetAmount;
 
     /************************************************
      *  IMMUTABLES & CONSTANTS
@@ -211,6 +215,76 @@ contract PrimitiveRmm01Vault is VaultPrimitiveInteractions, ERC20Upgradeable {
         vaultParams.cap = uint104(newCap);
     }
 
-    
+    /************************************************
+     *  VAULT OPERATIONS
+    ***********************************************/
+
+    /**
+     * @notice Helper function that performs most administrative tasks
+     * such as setting next option, minting new shares, getting vault fees, etc.
+     * @return newRoundAssetAmount is the new balance used to calculate next option purchase size or collateral size
+     * @return queuedWithdrawAssetAmount is the new queued withdraw amount for this round
+     */
+    function rollToNextOption() external onlyOwner nonReentrant {
+        uint256 sharesToMint;
+        uint256 performanceFeeInAsset;
+        uint256 totalVaultFee;
+        uint256 newRoundAssetAmount;
+        uint256 queuedWithdrawAssetAmount;
+        {
+            uint256 newPricePerShare;
+            (
+                newRoundAssetAmount,
+                queuedWithdrawAssetAmount,
+                newPricePerShare,
+                sharesToMint,
+                performanceFeeInAsset,
+                totalVaultFee
+            ) = VaultRollover.rollover(
+                vaultState,
+                VaultRollover.RolloverParams(
+                    vaultParams.decimals,
+                    IERC20(vaultParams.asset).balanceOf(address(this)),
+                    totalSupply(),
+                    lastQueuedWithdrawAssetAmount,
+                    performanceFee,
+                    managementFee
+                )
+            );
+
+            // Finalize the pricePerShare at the end of the round
+            uint256 currentRound = vaultState.round;
+            roundPricePerShare[currentRound] = newPricePerShare;
+
+            emit CollectVaultFees(
+                performanceFeeInAsset,
+                totalVaultFee,
+                currentRound,
+                feeRecipient
+            );
+
+            vaultState.totalDepositPending = 0;
+            vaultState.round = uint16(currentRound + 1);
+        }
+
+        _mint(address(this), sharesToMint);
+
+        if (totalVaultFee > 0) {
+            transferAsset(payable(feeRecipient), totalVaultFee);
+        }
+
+        lastQueuedWithdrawAssetAmount = queuedWithdrawAssetAmount;
+
+        ShareMath.assertUint104(newRoundAssetAmount);
+        vaultState.currentRoundAssetAmount = uint104(newRoundAssetAmount);
+        
+    }
+
+    /************************************************
+     *  DEPOSIT & WITHDRAWALS
+    ***********************************************/
+
+
+
 
 }
