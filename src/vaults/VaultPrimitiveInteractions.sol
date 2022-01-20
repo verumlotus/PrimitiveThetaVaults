@@ -6,13 +6,14 @@ import "../libraries/ShareMath.sol";
 import "openzeppelin/token/ERC20/IERC20.sol";
 import "../libraries/Vault.sol";
 import "openzeppelin-upgradeable/access/OwnableUpgradeable.sol";
+import "openzeppelin-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "../libraries/VaultRollover.sol";
 
 /** 
  * Handles logic for interactions between the Vault and Primitive Engines.
  * Follows the upgradeable proxy contract outlined by Openzeppelin and others
  */
-contract VaultPrimitiveInteractions is IPrimitiveCallback, OwnableUpgradeable {
+contract VaultPrimitiveInteractions is IPrimitiveCallback, OwnableUpgradeable, ReentrancyGuardUpgradeable {
 
     /************************************************
      *  STORAGE
@@ -92,6 +93,7 @@ contract VaultPrimitiveInteractions is IPrimitiveCallback, OwnableUpgradeable {
     ) internal initializer {
         __Ownable_init();
         transferOwnership(_owner);
+        __ReentrancyGuard_init();
     }
 
     /************************************************
