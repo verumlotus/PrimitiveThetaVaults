@@ -12,7 +12,7 @@ library Vault {
     // Placeholder uint value to prevent cold writes
     uint256 internal constant PLACEHOLDER_UINT = 1;
 
-    struct VaultDetails {
+    struct VaultParams {
         // Token decimals for vault shares
         uint8 decimals;
         // Risky asset of RMM pool
