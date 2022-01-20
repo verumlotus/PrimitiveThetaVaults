@@ -6,6 +6,7 @@ import "../libraries/ShareMath.sol";
 import "openzeppelin/token/ERC20/IERC20.sol";
 import "../libraries/Vault.sol";
 import "openzeppelin-upgradeable/access/OwnableUpgradeable.sol";
+import "../libraries/VaultRollover.sol";
 
 /** 
  * Handles logic for interactions between the Vault and Primitive Engines.
@@ -133,6 +134,44 @@ contract VaultPrimitiveInteractions is IPrimitiveCallback, OwnableUpgradeable {
         // Reset option State since we are no longer an LP in the RMM pool
         optionState.currentPoolId = bytes32(0);
         optionState.delLiquidity = 0;
+    }
+
+    /**
+     * @notice Swaps tokens using UniswapV3 router
+     * @param tokenIn is the token address to swap
+     * @param minAmountOut is the minimum acceptable amount of tokenOut received from swap
+     * @param router is the contract address of UniswapV3 router
+     * @param swapPath is the swap path e.g. encodePacked(tokenIn, poolFee, tokenOut)
+     */
+    function swap(
+        address tokenIn,
+        uint256 minAmountOut,
+        address router,
+        bytes calldata swapPath
+    ) public {
+        VaultRollover.swap(
+            tokenIn,
+            minAmountOut,
+            router,
+            swapPath
+        );
+    }
+
+    /**
+     * @notice Check if the path set for swap is valid
+     * @param swapPath is the swap path e.g. encodePacked(tokenIn, poolFee, tokenOut)
+     * @param validTokenIn is the contract address of the correct tokenIn
+     * @param validTokenOut is the contract address of the correct tokenOut
+     * @param uniswapFactory is the contract address of UniswapV3 factory
+     * @return isValidPath is whether the path is valid
+     */
+    function checkPath(
+        bytes calldata swapPath,
+        address validTokenIn,
+        address validTokenOut,
+        address uniswapFactory
+    ) public view returns (bool isValidPath) {
+        return VaultRollover.checkPath(swapPath, validTokenIn, validTokenOut, uniswapFactory);
     }
 
     /************************************************
