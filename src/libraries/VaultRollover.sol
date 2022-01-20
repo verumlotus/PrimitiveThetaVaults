@@ -2,6 +2,7 @@
 pragma solidity 0.8.11;
 import "./Vault.sol";
 import "./ShareMath.sol";
+import "./UniswapRouter.sol";
 
 /**
  * Utilities to help with Vault rollover to next option
@@ -183,5 +184,55 @@ library VaultRollover {
         }
 
         return (_performanceFeeInAsset, _managementFeeInAsset, _vaultFee);
+    }
+
+    /**
+     * @notice Swaps tokens using UniswapV3 router
+     * @param tokenIn is the token address to swap
+     * @param minAmountOut is the minimum acceptable amount of tokenOut received from swap
+     * @param router is the contract address of UniswapV3 router
+     * @param swapPath is the swap path e.g. encodePacked(tokenIn, poolFee, tokenOut)
+     */
+    function swap(
+        address tokenIn,
+        uint256 minAmountOut,
+        address router,
+        bytes calldata swapPath
+    ) external {
+        uint256 balance = IERC20(tokenIn).balanceOf(address(this));
+
+        if (balance > 0) {
+            UniswapRouter.swap(
+                address(this),
+                tokenIn,
+                balance,
+                minAmountOut,
+                router,
+                swapPath
+            );
+        }
+    }
+
+    /**
+     * @notice Check if the path set for swap is valid
+     * @param swapPath is the swap path e.g. encodePacked(tokenIn, poolFee, tokenOut)
+     * @param validTokenIn is the contract address of the correct tokenIn
+     * @param validTokenOut is the contract address of the correct tokenOut
+     * @param uniswapFactory is the contract address of UniswapV3 factory
+     * @return isValidPath is whether the path is valid
+     */
+    function checkPath(
+        bytes calldata swapPath,
+        address validTokenIn,
+        address validTokenOut,
+        address uniswapFactory
+    ) external view returns (bool isValidPath) {
+        return
+            UniswapRouter.checkPath(
+                swapPath,
+                validTokenIn,
+                validTokenOut,
+                uniswapFactory
+            );
     }
 }
