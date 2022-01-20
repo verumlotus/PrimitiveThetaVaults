@@ -55,6 +55,12 @@ contract VaultPrimitiveInteractions is IPrimitiveCallback {
      *  Events
     ***********************************************/
 
+    /// @notice - emitted on pool creation
+    event poolCreated(bytes32 indexed poolId);
+
+    /// @notice - emitted on closing a position
+    event positionClosed(bytes32 indexed poolId, uint256 delRisky, uint256 delStable);
+
     /************************************************
      *  Constructor & Initializer
     ***********************************************/
@@ -97,6 +103,7 @@ contract VaultPrimitiveInteractions is IPrimitiveCallback {
         );
         optionState.currentPoolId = poolId;
         optionState.delLiquidity = params.delLiquidity;
+        emit poolCreated(poolId);
     }
 
     /**
@@ -107,6 +114,8 @@ contract VaultPrimitiveInteractions is IPrimitiveCallback {
         (uint256 delRisky, uint256 delStable) = IPrimitiveEngine(engine).remove(optionState.currentPoolId, optionState.delLiquidity);
         // Withdraw asset & stable from margin account and transfer to ourselves
         IPrimitiveEngine(engine).withdraw(address(this), delRisky, delStable);
+
+        emit positionClosed(optionState.currentPoolId, delRisky, delStable);
 
         // Reset option State since we are no longer an LP in the RMM pool
         optionState.currentPoolId = bytes32(0);
