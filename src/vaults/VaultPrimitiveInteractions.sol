@@ -71,6 +71,11 @@ contract VaultPrimitiveInteractions is IPrimitiveCallback, OwnableUpgradeable, R
     /// @notice - emitted on closing a position
     event PositionClosed(bytes32 indexed poolId, uint256 delRisky, uint256 delStable);
 
+    modifier onlyEngine() {
+        require(msg.sender == engine, "Caller must be engine");
+        _;
+    }
+
     /************************************************
      *  Constructor & Initializer
     ***********************************************/
@@ -201,7 +206,7 @@ contract VaultPrimitiveInteractions is IPrimitiveCallback, OwnableUpgradeable, R
         uint256 delRisky,
         uint256 delStable,
         bytes calldata // data bytes passed in, unused
-    ) external {
+    ) external onlyEngine {
         // For the callback, we simply need to transfer the desired amount of assets to the engine 
         IERC20(asset).safeTransfer(engine, delRisky);
         IERC20(stable).safeTransfer(engine, delStable);
@@ -214,7 +219,7 @@ contract VaultPrimitiveInteractions is IPrimitiveCallback, OwnableUpgradeable, R
         uint256 delRisky,
         uint256 delStable,
         bytes calldata // data bytes passed in, unused
-    ) external {
+    ) external onlyEngine {
         if (delRisky != 0) {
             IERC20(asset).safeTransfer(engine, delRisky);
         }
@@ -230,7 +235,7 @@ contract VaultPrimitiveInteractions is IPrimitiveCallback, OwnableUpgradeable, R
         uint256 delRisky,
         uint256 delStable,
         bytes calldata // data bytes passed in, unused
-    ) external {
+    ) external onlyEngine {
         IERC20(asset).safeTransfer(engine, delRisky);
         IERC20(stable).safeTransfer(engine, delStable);
     }
