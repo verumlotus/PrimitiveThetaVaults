@@ -552,15 +552,6 @@ contract PrimitiveRmm01Vault is VaultPrimitiveInteractions, ERC20Upgradeable {
     }
 
     /**
-     * @notice Returns the vault's total balance, including the amounts locked into a short position
-     * @return total balance of the vault, including the amounts locked in third party protocols
-     */
-    function totalBalance() public view returns (uint256) {
-        return
-            uint256(vaultState.currentRoundAssetAmount) + IERC20(vaultParams.asset).balanceOf(address(this));
-    }
-
-    /**
      * @notice Sets a new path for swaps
      * @param newSwapPath is the new path
      */
@@ -574,4 +565,107 @@ contract PrimitiveRmm01Vault is VaultPrimitiveInteractions, ERC20Upgradeable {
         swapPath = newSwapPath;
     }
 
+    /************************************************
+     *  GETTERS
+     ***********************************************/
+
+    /**
+     * @notice Returns the vault's total balance, including the amounts locked into a short position
+     * @return total balance of the vault, including the amounts locked in third party protocols
+     */
+    function totalBalance() public view returns (uint256) {
+        return
+            uint256(vaultState.currentRoundAssetAmount) + IERC20(vaultParams.asset).balanceOf(address(this));
+    }
+
+    /**
+     * @notice Returns the asset balance held on the vault for the account
+     * @param account is the address to lookup balance for
+     * @return the amount of `asset` custodied by the vault for the user
+     */
+    function accountVaultBalance(address account)
+        external
+        view
+        returns (uint256)
+    {
+        uint256 _decimals = vaultParams.decimals;
+        uint256 assetPerShare =
+            ShareMath.assetPerShare(
+                totalSupply(),
+                totalBalance(),
+                vaultState.totalDepositPending,
+                _decimals
+            );
+        return
+            ShareMath.sharesToAsset(shares(account), assetPerShare, _decimals);
+    }
+
+    /**
+     * @notice Getter for returning the account's share balance including unredeemed shares
+     * @param account is the account to lookup share balance for
+     * @return the share balance
+     */
+    function shares(address account) public view returns (uint256) {
+        (uint256 heldByAccount, uint256 heldByVault) = shareBalances(account);
+        return heldByAccount + heldByVault;
+    }
+
+    /**
+     * @notice Getter for returning the account's share balance split between account and vault holdings
+     * @param account is the account to lookup share balance for
+     * @return heldByAccount is the shares held by account
+     * @return heldByVault is the shares held on the vault (unredeemedShares)
+     */
+    function shareBalances(address account)
+        public
+        view
+        returns (uint256 heldByAccount, uint256 heldByVault)
+    {
+        Vault.DepositReceipt memory depositReceipt = depositReceipts[account];
+
+        if (depositReceipt.round < ShareMath.PLACEHOLDER_UINT) {
+            return (balanceOf(account), 0);
+        }
+
+        uint256 unredeemedShares =
+            depositReceipt.getSharesFromReceipt(
+                vaultState.round,
+                roundPricePerShare[depositReceipt.round],
+                vaultParams.decimals
+            );
+
+        return (balanceOf(account), unredeemedShares);
+    }
+
+    /**
+     * @notice The price of a unit of share denominated in the `asset`
+     */
+    function assetPerShare() external view returns (uint256) {
+        return
+            ShareMath.assetPerShare(
+                totalSupply(),
+                totalBalance(),
+                vaultState.totalDepositPending,
+                vaultParams.decimals
+            );
+    }
+
+    /**
+     * @notice Returns the token decimals
+     */
+    function decimals() public view override returns (uint8) {
+        return vaultParams.decimals;
+    }
+
+    function cap() external view returns (uint256) {
+        return vaultParams.cap;
+    }
+
+    function currentPoolId() external view returns (bytes32) {
+        return optionState.currentPoolId;
+    }
+
+    function totalPending() external view returns (uint256) {
+        return vaultState.totalDepositPending;
+    }
 }
