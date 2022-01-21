@@ -152,14 +152,12 @@ contract VaultPrimitiveInteractions is IPrimitiveCallback, OwnableUpgradeable, R
      * @param tokenIn is the token address to swap
      * @param minAmountOut is the minimum acceptable amount of tokenOut received from swap
      * @param router is the contract address of UniswapV3 router
-     * @param swapPath is the swap path e.g. encodePacked(tokenIn, poolFee, tokenOut)
      */
     function swap(
         address tokenIn,
         uint256 minAmountOut,
-        address router,
-        bytes calldata swapPath
-    ) public {
+        address router
+    ) public onlyOwner {
         VaultRollover.swap(
             tokenIn,
             minAmountOut,
@@ -170,19 +168,19 @@ contract VaultPrimitiveInteractions is IPrimitiveCallback, OwnableUpgradeable, R
 
     /**
      * @notice Check if the path set for swap is valid
-     * @param swapPath is the swap path e.g. encodePacked(tokenIn, poolFee, tokenOut)
+     * @param _swapPath is the swap path e.g. encodePacked(tokenIn, poolFee, tokenOut)
      * @param validTokenIn is the contract address of the correct tokenIn
      * @param validTokenOut is the contract address of the correct tokenOut
      * @param uniswapFactory is the contract address of UniswapV3 factory
      * @return isValidPath is whether the path is valid
      */
     function checkPath(
-        bytes calldata swapPath,
+        bytes calldata _swapPath,
         address validTokenIn,
         address validTokenOut,
         address uniswapFactory
-    ) public view returns (bool isValidPath) {
-        return VaultRollover.checkPath(swapPath, validTokenIn, validTokenOut, uniswapFactory);
+    ) internal view returns (bool isValidPath) {
+        return VaultRollover.checkPath(_swapPath, validTokenIn, validTokenOut, uniswapFactory);
     }
 
     /************************************************
