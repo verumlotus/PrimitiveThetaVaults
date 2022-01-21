@@ -66,7 +66,7 @@ contract VaultPrimitiveInteractions is IPrimitiveCallback, OwnableUpgradeable, R
     ***********************************************/
 
     /// @notice - emitted on pool creation
-    event PoolCreated(bytes32 indexed poolId);
+    event PoolCreated(bytes32 indexed poolId, uint256 delLiquidity);
 
     /// @notice - emitted on closing a position
     event PositionClosed(bytes32 indexed poolId, uint256 delRisky, uint256 delStable);
@@ -127,8 +127,9 @@ contract VaultPrimitiveInteractions is IPrimitiveCallback, OwnableUpgradeable, R
             ""
         );
         optionState.currentPoolId = poolId;
-        optionState.delLiquidity = params.delLiquidity;
-        emit PoolCreated(poolId);
+        // Since we are creating the pool, the pool will burn MIN_LIQUIDITY at our expense
+        optionState.delLiquidity = params.delLiquidity - IPrimitiveEngine(engine).MIN_LIQUIDITY();
+        emit PoolCreated(poolId, optionState.delLiquidity);
     }
 
     /**
