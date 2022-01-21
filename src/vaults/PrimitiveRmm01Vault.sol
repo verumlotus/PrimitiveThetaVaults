@@ -8,6 +8,7 @@ import "../interfaces/IWETH.sol";
 
 contract PrimitiveRmm01Vault is VaultPrimitiveInteractions, ERC20Upgradeable {
     using ShareMath for Vault.DepositReceipt;
+    using SafeERC20 for IERC20;
 
     /************************************************
      *  STORAGE
@@ -223,10 +224,15 @@ contract PrimitiveRmm01Vault is VaultPrimitiveInteractions, ERC20Upgradeable {
     /**
      * @notice Helper function that performs most administrative tasks
      * such as setting next option, minting new shares, getting vault fees, etc.
-     * @return newRoundAssetAmount is the new balance used to calculate next option purchase size or collateral size
-     * @return queuedWithdrawAssetAmount is the new queued withdraw amount for this round
+     * @dev Assumes that the owner has already swapped any stable (riskless) received from 
+     * RMM pool for asset (risky)
      */
     function rollToNextOption() external onlyOwner nonReentrant {
+        // We should have swapped all stable for risky
+        // Check that the vault's balance is less than 1 unit of the stable
+        require(IERC20Metadata(vaultParams.stable).balanceOf(address(this)) < 10 ** IERC20Metadata(vaultParams.stable).decimals(), 
+            "Owner should swap stable for asset");
+
         uint256 sharesToMint;
         uint256 performanceFeeInAsset;
         uint256 totalVaultFee;
@@ -294,14 +300,121 @@ contract PrimitiveRmm01Vault is VaultPrimitiveInteractions, ERC20Upgradeable {
             require(success, "Transfer failed");
             return;
         }
-        IERC20(asset).transfer(recipient, amount);
+        IERC20(asset).safeTransfer(recipient, amount);
     }
 
     /************************************************
      *  DEPOSIT & WITHDRAWALS
     ***********************************************/
 
+    /**
+     * @notice Deposits ETH into the contract and mint vault shares. Reverts if the asset is not WETH.
+     */
+    function depositETH() external payable nonReentrant {
+        require(vaultParams.asset == WETH, "!WETH");
+        require(msg.value > 0, "!value");
 
+        _depositFor(msg.value, msg.sender);
 
+        IWETH(WETH).deposit{value: msg.value}();
+    }
+
+    /**
+     * @notice Deposits the `asset` from msg.sender.
+     * @param amount is the amount of `asset` to deposit
+     */
+    function deposit(uint256 amount) external nonReentrant {
+        require(amount > 0, "!amount");
+
+        _depositFor(amount, msg.sender);
+
+        // An approve() by the msg.sender is required beforehand
+        IERC20(vaultParams.asset).safeTransferFrom(
+            msg.sender,
+            address(this),
+            amount
+        );
+    }
+
+    /**
+     * @notice Deposits the `asset` from msg.sender added to `creditor`'s deposit.
+     * @notice Used for vault -> vault deposits on the user's behalf
+     * @param amount is the amount of `asset` to deposit
+     * @param creditor is the address that can claim/withdraw deposited amount
+     */
+    function depositFor(uint256 amount, address creditor)
+        external
+        nonReentrant
+    {
+        require(amount > 0, "!amount");
+        require(creditor != address(0));
+
+        _depositFor(amount, creditor);
+
+        // An approve() by the msg.sender is required beforehand
+        IERC20(vaultParams.asset).safeTransferFrom(
+            msg.sender,
+            address(this),
+            amount
+        );
+    }
+
+    /**
+     * @notice Mints the vault shares to the creditor
+     * @param amount is the amount of `asset` deposited
+     * @param creditor is the address to receieve the deposit
+     */
+    function _depositFor(uint256 amount, address creditor) private {
+        uint256 currentRound = vaultState.round;
+        uint256 totalWithDepositedAmount = totalBalance() + amount;
+
+        require(totalWithDepositedAmount <= vaultParams.cap, "Exceed cap");
+        require(
+            totalWithDepositedAmount >= vaultParams.minimumSupply,
+            "Insufficient balance"
+        );
+
+        emit Deposit(creditor, amount, currentRound);
+
+        Vault.DepositReceipt memory depositReceipt = depositReceipts[creditor];
+
+        // If we have an unprocessed pending deposit from the previous rounds, we have to process it.
+        uint256 unredeemedShares =
+            depositReceipt.getSharesFromReceipt(
+                currentRound,
+                roundPricePerShare[depositReceipt.round],
+                vaultParams.decimals
+            );
+
+        uint256 depositAmount = amount;
+
+        // If we have a pending deposit in the current round, we add on to the pending deposit
+        if (currentRound == depositReceipt.round) {
+            uint256 newAmount = uint256(depositReceipt.amount) + amount;
+            depositAmount = newAmount;
+        }
+
+        ShareMath.assertUint104(depositAmount);
+
+        depositReceipts[creditor] = Vault.DepositReceipt({
+            round: uint16(currentRound),
+            amount: uint104(depositAmount),
+            unredeemedShares: uint128(unredeemedShares)
+        });
+
+        uint256 newTotalPending = uint256(vaultState.totalDepositPending) + amount;
+        ShareMath.assertUint128(newTotalPending);
+
+        vaultState.totalDepositPending = uint128(newTotalPending);
+    }
+
+    /**
+     * @notice Returns the vault's total balance, including the amounts locked into a short position
+     * @return total balance of the vault, including the amounts locked in third party protocols
+     */
+    function totalBalance() public view returns (uint256) {
+        return
+            uint256(vaultState.currentRoundAssetAmount) + IERC20(vaultParams.asset).balanceOf(address(this));
+    }
 
 }

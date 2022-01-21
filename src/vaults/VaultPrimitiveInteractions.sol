@@ -3,7 +3,8 @@ pragma solidity 0.8.11;
 import "primitive/interfaces/IPrimitiveEngine.sol";
 import "../interfaces/IPrimitiveCallback.sol";
 import "../libraries/ShareMath.sol";
-import "openzeppelin/token/ERC20/IERC20.sol";
+import "openzeppelin/token/ERC20/extensions/IERC20Metadata.sol";
+import "openzeppelin/token/ERC20/utils/SafeERC20.sol";
 import "../libraries/Vault.sol";
 import "openzeppelin-upgradeable/access/OwnableUpgradeable.sol";
 import "openzeppelin-upgradeable/security/ReentrancyGuardUpgradeable.sol";
@@ -14,6 +15,7 @@ import "../libraries/VaultRollover.sol";
  * Follows the upgradeable proxy contract outlined by Openzeppelin and others
  */
 contract VaultPrimitiveInteractions is IPrimitiveCallback, OwnableUpgradeable, ReentrancyGuardUpgradeable {
+    using SafeERC20 for IERC20;
 
     /************************************************
      *  STORAGE
@@ -196,8 +198,8 @@ contract VaultPrimitiveInteractions is IPrimitiveCallback, OwnableUpgradeable, R
         bytes calldata // data bytes passed in, unused
     ) external {
         // For the callback, we simply need to transfer the desired amount of assets to the engine 
-        require(IERC20(asset).transfer(engine, delRisky) == true, "Error transfering risky to engine on create");
-        require(IERC20(stable).transfer(engine, delStable) == true, "Error transfering stable to engine on create");
+        IERC20(asset).safeTransfer(engine, delRisky);
+        IERC20(stable).safeTransfer(engine, delStable);
     }
 
     /// @notice              Triggered when depositing tokens to an Engine
@@ -209,10 +211,10 @@ contract VaultPrimitiveInteractions is IPrimitiveCallback, OwnableUpgradeable, R
         bytes calldata // data bytes passed in, unused
     ) external {
         if (delRisky != 0) {
-            require(IERC20(asset).transfer(engine, delRisky) == true, "Error transfering risky to engine on deposit");
+            IERC20(asset).safeTransfer(engine, delRisky);
         }
         if (delStable != 0) {
-            require(IERC20(stable).transfer(engine, delStable) == true, "Error transfering stable to engine on deposit");
+            IERC20(stable).safeTransfer(engine, delStable);
         }
     }
 
@@ -224,7 +226,7 @@ contract VaultPrimitiveInteractions is IPrimitiveCallback, OwnableUpgradeable, R
         uint256 delStable,
         bytes calldata // data bytes passed in, unused
     ) external {
-        require(IERC20(asset).transfer(engine, delRisky) == true, "Error transfering risky to engine on allocate");
-        require(IERC20(stable).transfer(engine, delStable) == true, "Error transfering stable to engine on allocate");
+        IERC20(asset).safeTransfer(engine, delRisky);
+        IERC20(stable).safeTransfer(engine, delStable);
     }
 }
