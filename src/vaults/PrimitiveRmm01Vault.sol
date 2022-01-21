@@ -417,4 +417,18 @@ contract PrimitiveRmm01Vault is VaultPrimitiveInteractions, ERC20Upgradeable {
             uint256(vaultState.currentRoundAssetAmount) + IERC20(vaultParams.asset).balanceOf(address(this));
     }
 
+    /**
+     * @notice Sets a new path for swaps
+     * @param newSwapPath is the new path
+     */
+    function setSwapPath(bytes calldata newSwapPath)
+        external
+        onlyOwner
+        nonReentrant
+    {
+        // Ensure that owner can only set swap from USDC <-> WETH and nothing else
+        require(checkPath(newSwapPath, USDC, WETH, UNISWAP_FACTORY) || checkPath(newSwapPath, WETH, USDC, UNISWAP_FACTORY), "Invalid swapPath");
+        swapPath = newSwapPath;
+    }
+
 }
