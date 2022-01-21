@@ -145,6 +145,8 @@ contract PrimitiveRmm01Vault is VaultPrimitiveInteractions, ERC20Upgradeable {
         performanceFee = _performanceFee;
         managementFee = _managementFee * Vault.FEE_MULTIPLIER / WEEKS_PER_YEAR;
         period = _period;
+        // We rely on the assumption that asset decimals and share decimals are equivalent
+        require(IERC20Metadata(asset).decimals() == _vaultParams.decimals, "Asset and shares decimals must be equivalent");
         vaultParams = _vaultParams;
 
         uint256 assetBalance = IERC20(vaultParams.asset).balanceOf(address(this));
