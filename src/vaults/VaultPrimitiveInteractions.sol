@@ -109,7 +109,7 @@ contract VaultPrimitiveInteractions is IPrimitiveCallback, OwnableUpgradeable, R
 
     /**
      * @notice opens a new covered call position with the specified parameters
-     * @dev - note that we assume that a pool with this variables has not yet been configured (determined off-chain)
+     * @dev - note that we assume that a pool with these variables have not yet been configured (determined off-chain)
      * @dev - note that we also assume that the owner has rebalanced the vault holdings to an appropriate amount of 
      * asset (risky) and stable (riskless) to maximize the liquidity received from the RMM pool
      * @param params - struct containing config variables for RMM pool
@@ -134,10 +134,16 @@ contract VaultPrimitiveInteractions is IPrimitiveCallback, OwnableUpgradeable, R
 
     /**
      * @notice closes the current covered call position by withdrawing all liquidity from RMM pool
+     * @param minRiskyOut minimum amount of risky token we expect - mitigates sandwich attacks
+     * @param minStableOut minimum amount of stable token we expect - mitigates sandwich attacks
      */
-    function closePosition() public onlyOwner {
+    function closePosition(uint256 minRiskyOut, uint256 minStableOut) public onlyOwner {
         // First we need to remove our liquidity and transfer it to our margin account within the engine
         (uint256 delRisky, uint256 delStable) = IPrimitiveEngine(engine).remove(optionState.currentPoolId, optionState.delLiquidity);
+        // Make sure creatures from the dark forest have not screwed us over
+        if (delRisky < minRiskyOut || delStable < minStableOut) {
+            revert("Slippage on removal too high");
+        }
         // Withdraw asset & stable from margin account and transfer to ourselves
         IPrimitiveEngine(engine).withdraw(address(this), delRisky, delStable);
 
