@@ -409,6 +409,149 @@ contract PrimitiveRmm01Vault is VaultPrimitiveInteractions, ERC20Upgradeable {
     }
 
     /**
+     * @notice Initiates a withdrawal that can be processed once the round completes
+     * @param numShares is the number of shares to withdraw
+     */
+    function initiateWithdraw(uint256 numShares) external nonReentrant {
+        require(numShares > 0, "!numShares");
+
+        // We do a max redeem before initiating a withdrawal
+        // But we check if they must first have unredeemed shares
+        if (
+            depositReceipts[msg.sender].amount > 0 ||
+            depositReceipts[msg.sender].unredeemedShares > 0
+        ) {
+            _redeem(0, true);
+        }
+
+        // This caches the `round` variable used in shareBalances
+        uint256 currentRound = vaultState.round;
+        Vault.Withdrawal storage withdrawal = withdrawals[msg.sender];
+
+        bool withdrawalIsSameRound = withdrawal.round == currentRound;
+
+        emit InitiateWithdraw(msg.sender, numShares, currentRound);
+
+        uint256 existingShares = uint256(withdrawal.shares);
+
+        uint256 withdrawalShares;
+        if (withdrawalIsSameRound) {
+            withdrawalShares = existingShares + numShares;
+        } else {
+            require(existingShares == 0, "Existing withdraw");
+            withdrawalShares = numShares;
+            withdrawals[msg.sender].round = uint16(currentRound);
+        }
+
+        ShareMath.assertUint128(withdrawalShares);
+        withdrawals[msg.sender].shares = uint128(withdrawalShares);
+
+        uint256 newQueuedWithdrawShares =
+            uint256(vaultState.queuedWithdrawShares) + numShares;
+        ShareMath.assertUint128(newQueuedWithdrawShares);
+        vaultState.queuedWithdrawShares = uint128(newQueuedWithdrawShares);
+
+        _transfer(msg.sender, address(this), numShares);
+    }
+
+    /**
+     * @notice Completes a scheduled withdrawal from a past round. Uses finalized pps for the round
+     */
+    function completeWithdraw() external nonReentrant {
+        Vault.Withdrawal storage withdrawal = withdrawals[msg.sender];
+
+        uint256 withdrawalShares = withdrawal.shares;
+        uint256 withdrawalRound = withdrawal.round;
+
+        // This checks if there is a withdrawal
+        require(withdrawalShares > 0, "Not initiated");
+
+        require(withdrawalRound < vaultState.round, "Round not closed");
+
+        // We leave the round number as non-zero to save on gas for subsequent writes
+        withdrawals[msg.sender].shares = 0;
+        vaultState.queuedWithdrawShares = uint128(
+            uint256(vaultState.queuedWithdrawShares - withdrawalShares)
+        );
+
+        uint256 withdrawAmount =
+            ShareMath.sharesToAsset(
+                withdrawalShares,
+                roundPricePerShare[withdrawalRound],
+                vaultParams.decimals
+            );
+
+        emit Withdraw(msg.sender, withdrawAmount, withdrawalShares);
+
+        _burn(address(this), withdrawalShares);
+
+        require(withdrawAmount > 0, "!withdrawAmount");
+        transferAsset(msg.sender, withdrawAmount);
+
+        lastQueuedWithdrawAssetAmount = uint128(
+            uint256(lastQueuedWithdrawAssetAmount - withdrawAmount)
+        );
+    }
+
+    /**
+     * @notice Redeems shares that are owed to the account
+     * @param numShares is the number of shares to redeem
+     */
+    function redeem(uint256 numShares) external nonReentrant {
+        require(numShares > 0, "!numShares");
+        _redeem(numShares, false);
+    }
+
+    /**
+     * @notice Redeems the entire unredeemedShares balance that is owed to the account
+     */
+    function maxRedeem() external nonReentrant {
+        _redeem(0, true);
+    }
+
+
+    /**
+     * @notice Redeems shares that are owed to the account
+     * @param numShares is the number of shares to redeem, could be 0 when isMax=true
+     * @param isMax is flag for when callers do a max redemption
+     */
+    function _redeem(uint256 numShares, bool isMax) internal {
+        Vault.DepositReceipt memory depositReceipt =
+            depositReceipts[msg.sender];
+
+        // This handles the null case when depositReceipt.round = 0
+        // Because we start with round = 1 at `initialize`
+        uint256 currentRound = vaultState.round;
+
+        uint256 unredeemedShares =
+            depositReceipt.getSharesFromReceipt(
+                currentRound,
+                roundPricePerShare[depositReceipt.round],
+                vaultParams.decimals
+            );
+
+        numShares = isMax ? unredeemedShares : numShares;
+        if (numShares == 0) {
+            return;
+        }
+        require(numShares <= unredeemedShares, "Exceeds available");
+
+        // If we have a depositReceipt on the same round, BUT we have some unredeemed shares
+        // we debit from the unredeemedShares, but leave the amount field intact
+        // If the round has past, with no new deposits, we just zero it out for new deposits.
+        if (depositReceipt.round < currentRound) {
+            depositReceipts[msg.sender].amount = 0;
+        }
+
+        ShareMath.assertUint128(numShares);
+        depositReceipts[msg.sender].unredeemedShares = uint128(unredeemedShares - numShares);
+
+        emit Redeem(msg.sender, numShares, depositReceipt.round);
+
+        _transfer(address(this), msg.sender, numShares);
+    }
+
+    /**
      * @notice Returns the vault's total balance, including the amounts locked into a short position
      * @return total balance of the vault, including the amounts locked in third party protocols
      */
