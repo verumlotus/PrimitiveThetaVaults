@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MIT
+pragma solidity 0.8.11;
 import "../libraries/ShareMath.sol";
 import "../libraries/Vault.sol";
 import "../libraries/VaultRollover.sol";
@@ -113,9 +114,10 @@ contract PrimitiveRmm01Vault is VaultPrimitiveInteractions, ERC20Upgradeable {
     constructor(
         address _weth, 
         address _usdc, 
+        address _engine,
         address _uniswapRouter,
         address _uniswapFactory
-    ) {
+    ) VaultPrimitiveInteractions(_weth, _usdc, _engine) {
         WETH = _weth;
         USDC = _usdc;  
         UNISWAP_ROUTER = _uniswapRouter;

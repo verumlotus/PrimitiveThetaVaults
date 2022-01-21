@@ -5,11 +5,9 @@ import {DSTest} from "ds-test/test.sol";
 import {Utilities} from "./utils/Utilities.sol";
 import {console} from "./utils/Console.sol";
 import {Hevm} from "./utils/Hevm.sol";
-import {Vault} from "../vaults/Vault.sol";
 
 contract PrimitiveRmm01Test is DSTest {
     Hevm internal immutable hevm = Hevm(HEVM_ADDRESS);
-    Vault internal immutable vault;
 
     Utilities internal utils;
     address payable[] internal users;
@@ -17,7 +15,6 @@ contract PrimitiveRmm01Test is DSTest {
     function setUp() public {
         utils = new Utilities();
         users = utils.createUsers(5);
-        // TODO instantiate vault here
     }
 
     function testExample() public {
@@ -30,7 +27,7 @@ contract PrimitiveRmm01Test is DSTest {
         assertGt(bob.balance, alice.balance);
     }
 
-    function testSharesDecimalEqualsAssetDecimals() public {
-        assertEq(vault.decimals(), vault.underlying().decimals());
-    }
+    // function testSharesDecimalEqualsAssetDecimals() public {
+    //     assertEq(vault.decimals(), vault.underlying().decimals());
+    // }
 }
