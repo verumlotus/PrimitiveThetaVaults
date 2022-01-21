@@ -23,7 +23,7 @@ This repo uses Foundry for both compiling and testing.
 
 ## Improvements
 
-There are many improvements that can be made, starting with more thorough testing to ensure that the vaults operate as intended. Since RMM-01 is an AMM, the LP (in this case our vault) must deposit a certain composition of risky asset and a riskless stable. As a prototype, this vault swaps between risky <-> riskless multiple times, incurring a fee from the UniswapV3 AMM which would cut into profits. Updating internal bookkeeping mechanisms to limit the need for swapping would provide vault depositors with increased yield. 
+There are many improvements that could be made, starting with more thorough testing to ensure that the vaults operate as intended. Since RMM-01 is an AMM, the LP (in this case our vault) must deposit a certain composition of risky asset and a riskless stable. As a prototype, this vault swaps between risky <-> riskless multiple times, incurring a fee from the UniswapV3 AMM which would cut into profits. Updating internal bookkeeping mechanisms to limit the need for swapping would provide vault depositors with increased yield. 
 
 ## Credits
 
